@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 
-const API_URL = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const QUALITY_COLOR = {
   Excellent: '#7dba84',

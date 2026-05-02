@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  backend:
+    build: ./backend
+    container_name: vidanalyzer-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/app/uploads
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Change this to your backend's public URL when deploying
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    container_name: vidanalyzer-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  uploads_data:

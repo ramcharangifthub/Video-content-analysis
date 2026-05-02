@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 
-const API_URL = "[https://video-analysis-backend-hm75.onrender.com]
+const API_URL = "[https://video-analysis-backend-hm75.onrender.com](https://video-analysis-backend-hm75.onrender.com)";
 
 const QUALITY_COLOR = {
   Excellent: '#7dba84',

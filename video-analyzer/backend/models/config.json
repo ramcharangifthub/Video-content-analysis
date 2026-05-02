@@ -1,0 +1,28 @@
+{
+  "feature_columns": [
+    "avg_brightness",
+    "avg_sharpness",
+    "motion_score",
+    "contrast_score",
+    "color_diversity",
+    "audio_clarity",
+    "compression_artifacts",
+    "resolution_score",
+    "fps_score",
+    "brightness_score",
+    "sharpness_score",
+    "stability_score",
+    "artifact_score",
+    "visual_quality_score",
+    "engagement_score",
+    "scene_changes",
+    "face_present",
+    "text_overlay"
+  ],
+  "classes": [
+    "Average",
+    "Excellent",
+    "Good",
+    "Poor"
+  ]
+}

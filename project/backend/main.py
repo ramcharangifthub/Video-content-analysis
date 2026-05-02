@@ -525,7 +525,26 @@ def analyze_audio_quality(audio_path: str) -> dict:
 
 # ── Video frame analysis ─────────────────────────────────────
 def analyze_video(video_path: str, content_key: str = "general") -> dict:
+    # Try to re-encode with ffmpeg first if opencv cannot open directly
+    import subprocess, tempfile, shutil
+    working_path = video_path
+    tmp_path = None
     cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened() or cap.get(cv2.CAP_PROP_FRAME_COUNT) == 0:
+        cap.release()
+        try:
+            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".mp4")
+            os.close(tmp_fd)
+            subprocess.run([
+                "ffmpeg", "-y", "-i", video_path,
+                "-vcodec", "libx264", "-acodec", "aac",
+                "-preset", "ultrafast", "-crf", "28",
+                tmp_path
+            ], capture_output=True, timeout=120)
+            cap = cv2.VideoCapture(tmp_path)
+            working_path = tmp_path
+        except Exception:
+            pass
     if not cap.isOpened():
         raise ValueError("Cannot open video file")
 
@@ -536,7 +555,7 @@ def analyze_video(video_path: str, content_key: str = "general") -> dict:
     height       = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     sample_interval = max(int(fps), 1)
-    max_samples     = 120
+    max_samples     = 60  # reduced for free tier CPU limits
 
     brightness_list, sharpness_list, contrast_list = [], [], []
     color_div_list, noise_list, motion_list = [], [], []
@@ -579,9 +598,37 @@ def analyze_video(video_path: str, content_key: str = "general") -> dict:
             sampled  += 1
         frame_idx += 1
     cap.release()
+    if tmp_path and os.path.exists(tmp_path):
+        try: os.remove(tmp_path)
+        except: pass
 
     if not brightness_list:
-        raise ValueError("No frames could be extracted from this video")
+        # Fallback: try extracting frames via ffmpeg directly
+        try:
+            import subprocess, tempfile
+            tmp_dir = tempfile.mkdtemp()
+            subprocess.run([
+                "ffmpeg", "-y", "-i", working_path,
+                "-vf", "fps=0.5", "-frames:v", "10",
+                "-q:v", "2", f"{tmp_dir}/frame_%03d.jpg"
+            ], capture_output=True, timeout=60)
+            import glob
+            frames = sorted(glob.glob(f"{tmp_dir}/frame_*.jpg"))
+            for fp in frames:
+                frame = cv2.imread(fp)
+                if frame is not None:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    brightness_list.append(float(np.mean(frame)))
+                    sharpness_list.append(float(cv2.Laplacian(gray, cv2.CV_64F).var()))
+                    contrast_list.append(float(np.std(gray)))
+                    color_div_list.append(float(np.mean([np.std(frame[:,:,i]) for i in range(3)])))
+                    noise_list.append(float(np.std(gray.astype(float) - cv2.GaussianBlur(gray,(5,5),0).astype(float))))
+                    motion_list.append(0.0)
+            import shutil; shutil.rmtree(tmp_dir, ignore_errors=True)
+        except Exception:
+            pass
+    if not brightness_list:
+        raise ValueError("No frames could be extracted from this video — try a smaller file or different format")
 
     avg_b  = float(np.mean(brightness_list))
     avg_s  = float(np.mean(sharpness_list))
